@@ -11,12 +11,12 @@ import {
   View,
 } from "react-native";
 // import Animated from "react-native-reanimated";
-
+import useAuthStore from "@/store/auth.store";
 import { SafeAreaView } from "react-native-safe-area-context";
 export default function Index() {
+  const { user } = useAuthStore();
   return (
     <SafeAreaView className="flex-1 bg-white">
-      ]
       <FlatList
         data={offers}
         renderItem={({ item, index }) => {
