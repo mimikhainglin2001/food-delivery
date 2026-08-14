@@ -105,14 +105,18 @@ async function uploadImageToStorage(imageUrl: string) {
 }
 
 async function seed(): Promise<void> {
-  // 1. Clear all
-  await clearAll(appwriteConfig.categoriesCollectionId);
-  await clearAll(appwriteConfig.customizationsCollectionId);
-  await clearAll(appwriteConfig.menuCollectionId);
+  console.log("🌱 Seeding: clearing existing data...");
+  // Delete dependent collections FIRST to avoid "restrict" relationship errors:
+  // menu_customizations references menu + customizations
+  // menu references categories
   await clearAll(appwriteConfig.menuCustomizationsCollectionId);
+  await clearAll(appwriteConfig.menuCollectionId);
+  await clearAll(appwriteConfig.customizationsCollectionId);
+  await clearAll(appwriteConfig.categoriesCollectionId);
   await clearStorage();
 
   // 2. Create Categories
+  console.log("🌱 Creating categories...");
   const categoryMap: Record<string, string> = {};
   for (const cat of data.categories) {
     const doc = await paced(() =>
@@ -127,6 +131,7 @@ async function seed(): Promise<void> {
   }
 
   // 3. Create Customizations
+  console.log("🌱 Creating customizations...");
   const customizationMap: Record<string, string> = {};
   for (const cus of data.customizations) {
     const doc = await paced(() =>
@@ -145,6 +150,7 @@ async function seed(): Promise<void> {
   }
 
   // 4. Create Menu Items
+  console.log("🌱 Creating menu items...");
   const menuMap: Record<string, string> = {};
   for (const item of data.menu) {
     const uploadedImage = await uploadImageToStorage(item.image_url);
@@ -168,6 +174,7 @@ async function seed(): Promise<void> {
     );
 
     menuMap[item.name] = doc.$id;
+    console.log(`🌱  created "${item.name}"`);
 
     // 5. Create menu_customizations
     for (const cusName of item.customizations) {

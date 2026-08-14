@@ -1,4 +1,10 @@
-import { CreateUserParams, SignInParams } from "@/type";
+import {
+  Category,
+  CreateUserParams,
+  GetMenuParams,
+  MenuItem,
+  SignInParams,
+} from "@/type";
 import {
   Account,
   Avatars,
@@ -86,34 +92,105 @@ export const getCurrentUser = async () => {
   }
 };
 
-// export const getMenu = async ({ category, query }: GetMenuParams) => {
-//   try {
-//     const queries: string[] = [];
+export const getMenu = async ({
+  category,
+  categoryName,
+  query,
+}: GetMenuParams) => {
+  try {
+    const menus = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.menuCollectionId,
+    );
 
-//     if (category) queries.push(Query.equal("categories", category));
-//     if (query) queries.push(Query.search("name", query));
+    const documents = menus.documents as unknown as MenuItem[];
+    const searchQuery = query?.toLowerCase().trim();
+    const categoryMatches = [category, categoryName].filter(
+      (value): value is string => Boolean(value),
+    );
 
-//     const menus = await databases.listDocuments(
-//       appwriteConfig.databaseId,
-//       appwriteConfig.menuCollectionId,
-//       queries,
-//     );
+    console.log(
+      "[getMenu] params:",
+      { category, categoryName, query },
+      "count:",
+      documents.length,
+    );
+    console.log(
+      "[getMenu] first doc keys:",
+      Object.keys(documents[0] ?? {}),
+    );
+    console.log(
+      "[getMenu] first 3 docs categories field:",
+      JSON.stringify(
+        documents
+          .slice(0, 3)
+          .map((doc) => (doc as unknown as Record<string, unknown>).categories),
+      ),
+    );
 
-//     return menus.documents;
-//   } catch (e) {
-//     throw new Error(e as string);
-//   }
-// };
+    return documents.filter((item) => {
+      if (searchQuery && !item.name.toLowerCase().includes(searchQuery)) {
+        return false;
+      }
 
-// export const getCategories = async () => {
-//   try {
-//     const categories = await databases.listDocuments(
-//       appwriteConfig.databaseId,
-//       appwriteConfig.categoriesCollectionId,
-//     );
+      if (categoryMatches.length === 0) return true;
 
-//     return categories.documents;
-//   } catch (e) {
-//     throw new Error(e as string);
-//   }
-// };
+      const itemCategory = (item as unknown as Record<string, unknown>)
+        .categories;
+
+      if (Array.isArray(itemCategory)) {
+        return itemCategory.some((value) => {
+          const id = (value as { $id?: string })?.$id ?? value;
+          return categoryMatches.includes(id as string);
+        });
+      }
+
+      if (itemCategory && typeof itemCategory === "object") {
+        const { $id, name } = itemCategory as {
+          $id?: string;
+          name?: string;
+        };
+        return (
+          categoryMatches.includes($id as string) ||
+          categoryMatches.includes(name as string)
+        );
+      }
+
+      return categoryMatches.includes(itemCategory as string);
+    });
+  } catch (e) {
+    throw new Error(e as string);
+  }
+};
+
+export const getCategories = async () => {
+  try {
+    const categories = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.categoriesCollectionId,
+    );
+
+    return categories.documents as unknown as Category[];
+  } catch (e) {
+    throw new Error(e as string);
+  }
+};
+
+// TEMP DEBUG - remove later
+export const debugCategories = async () => {
+  try {
+    const categories = await databases.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.categoriesCollectionId,
+    );
+    console.log(
+      "[debugCategories]",
+      JSON.stringify(
+        categories.documents.map((c) => ({ $id: c.$id, keys: Object.keys(c) })),
+      ),
+    );
+    return categories.documents;
+  } catch (e) {
+    throw new Error(e as string);
+  }
+};
